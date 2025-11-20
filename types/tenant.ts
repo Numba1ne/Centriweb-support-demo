@@ -151,43 +151,63 @@ export const PLAN_FEATURES: Record<TenantPlan, TenantFeatures> = {
   },
 };
 
-// Default tenant config (for development)
+// Default tenant config (DEMO MODE - Single Tenant)
+// This is the hard-coded config for the CentriWeb Support OS Demo
 export const DEFAULT_TENANT_CONFIG: TenantConfig = {
-  id: 'default',
+  id: 'centriweb',
   slug: 'centriweb',
-  domain: 'localhost',
-  plan: 'enterprise', // Full features in dev
+  domain: 'localhost', // Will be support.centriweb.com in production
+  plan: 'pro', // Pro plan features for demo
   status: 'active',
   branding: {
-    logo: '',
-    primaryColor: '#3b82f6', // centri-500
+    logo: '/logo.png', // TODO: Add CentriWeb logo to public folder
+    primaryColor: '#1275FF', // CentriWeb blue
+    secondaryColor: '#0ea5e9',
+    fontFamily: 'Inter, system-ui, sans-serif',
     companyName: 'CentriWeb',
     supportEmail: 'support@centriweb.com',
+    supportPhone: '+1 (555) 123-4567', // Optional demo phone
   },
-  features: PLAN_FEATURES.enterprise,
+  features: {
+    guides: true,
+    aiChat: true,
+    analytics: true,
+    voiceInput: true,
+    badges: false, // Disabled for demo simplicity
+    gamification: false, // Disabled for demo simplicity
+    interactiveWalkthroughs: false, // Disabled for demo simplicity
+    coBrowsing: false,
+    advancedGameification: false,
+    whisperVoice: false, // Use Web Speech API instead
+    customBranding: true,
+    ghlApiIntegration: false,
+    multiLanguage: false,
+  },
   aiSettings: {
-    tone: 'professional',
-    ragEnabled: true,
+    tone: 'friendly',
+    customInstructions: 'You are the CentriWeb Support OS demo assistant. Help users understand GoHighLevel automation, CRM management, and account setup. Be concise, friendly, and always suggest relevant guides.',
+    ragEnabled: true, // Simulated in demo
     voiceInputEnabled: true,
     voiceTTSEnabled: false,
   },
   supportSettings: {
     ticketForm: {
       embedCode: 'https://link.centriweb.com/widget/form/YeI4hfsgWG9C6IosdXTn',
+      // TODO: Replace with actual GHL form iframe code if different
     },
     responseTime: '2-4 hours',
-    businessHours: 'Mon-Fri 9am-5pm EST',
+    businessHours: 'Mon-Fri 9am-6pm EST',
   },
   contentSettings: {
-    inheritBaseKB: true,
-    customKBEnabled: true,
-    allowOverrides: true,
+    inheritBaseKB: true, // Use built-in guides
+    customKBEnabled: false, // Disabled for demo
+    allowOverrides: false, // Disabled for demo
   },
   analytics: {
     dashboardEnabled: true,
-    healthScoringEnabled: true,
-    exportEnabled: true,
-    retentionDays: 365,
+    healthScoringEnabled: false, // Disabled for demo
+    exportEnabled: false, // Disabled for demo
+    retentionDays: 90,
   },
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),

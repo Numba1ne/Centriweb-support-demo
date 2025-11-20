@@ -129,11 +129,18 @@ const Layout = () => {
 };
 
 const App = () => {
+  const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
+
   return (
     <TenantProvider>
       <ToastProvider>
         <HashRouter>
           <Layout />
+          {isDemoMode && (
+            <div className="demo-indicator">
+              <span className="mr-1">🎯</span> DEMO MODE
+            </div>
+          )}
         </HashRouter>
       </ToastProvider>
     </TenantProvider>
