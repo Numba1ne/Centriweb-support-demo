@@ -57,21 +57,29 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+    <!-- iOS-Inspired Custom Styles -->
+    <link rel="stylesheet" href="/index.css">
+
     <style>
-      /* Custom Scrollbar for premium feel */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+      /* Additional inline styles for instant load */
+      body {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
       }
-      ::-webkit-scrollbar-track {
-        background: #0f172a;
+
+      /* Loading animation */
+      @keyframes shimmer {
+        0% {
+          background-position: -1000px 0;
+        }
+        100% {
+          background-position: 1000px 0;
+        }
       }
-      ::-webkit-scrollbar-thumb {
-        background: #334155;
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #475569;
+
+      .loading-shimmer {
+        background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%);
+        background-size: 1000px 100%;
+        animation: shimmer 2s infinite linear;
       }
     </style>
   </head>
