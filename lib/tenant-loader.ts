@@ -39,56 +39,8 @@ function isLocalhost(hostname: string): boolean {
  * Detect which tenant based on URL
  */
 export function detectTenant(): TenantDetectionResult {
-  if (typeof window === 'undefined') {
-    // SSR fallback
-    return { method: 'default', identifier: 'centriweb' };
-  }
-
-  const url = new URL(window.location.href);
-  const hostname = url.hostname;
-  const params = url.searchParams;
-
-  // 0. Check for demo mode (always use default in demo)
-  const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
-  if (isDemoMode) {
-    console.log('[TenantLoader] DEMO MODE - Using default tenant');
-    return { method: 'default', identifier: 'centriweb' };
-  }
-
-  // 1. Check query param (dev mode)
-  if (params.has('tenant')) {
-    const slug = params.get('tenant')!;
-    console.log('[TenantLoader] Detected via query param:', slug);
-    return { method: 'query', identifier: slug };
-  }
-
-  // 2. Check subdomain (e.g., acme.supportos.io)
-  // Assuming production domain is supportos.io or centriweb-support.vercel.app
-  const productionDomains = ['supportos.io', 'centriweb-support.vercel.app', 'supportos.app'];
-  const isProductionDomain = productionDomains.some((domain) => hostname.includes(domain));
-
-  if (isProductionDomain) {
-    const subdomain = hostname.split('.')[0];
-    if (subdomain && subdomain !== 'www') {
-      console.log('[TenantLoader] Detected via subdomain:', subdomain);
-      return { method: 'subdomain', identifier: subdomain };
-    }
-  }
-
-  // 3. Check if localhost/dev environment
-  if (isLocalhost(hostname)) {
-    console.log('[TenantLoader] Localhost detected - Using default tenant');
-    return { method: 'default', identifier: 'centriweb' };
-  }
-
-  // 4. Custom domain (need to look up in database)
-  if (!isProductionDomain) {
-    console.log('[TenantLoader] Detected custom domain:', hostname);
-    return { method: 'domain', identifier: hostname };
-  }
-
-  // 5. Final fallback to default
-  console.log('[TenantLoader] Using default tenant (fallback)');
+  // 🎯 DEMO MODE: Always return default (no URL detection)
+  console.log('[TenantLoader] 🎯 DEMO - Always using default tenant');
   return { method: 'default', identifier: 'centriweb' };
 }
 
