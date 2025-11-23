@@ -129,7 +129,8 @@ const Layout = () => {
 };
 
 const App = () => {
-  const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
+  // 🎯 DEMO MODE: Always show demo indicator
+  const isDemoMode = true;
 
   return (
     <TenantProvider>
