@@ -4,6 +4,7 @@ import { PageTransition } from '../components/Layout/PageTransition';
 import { DashboardHeader } from '../components/Dashboard/DashboardHeader';
 import { AccountInsights } from '../components/Dashboard/AccountInsights';
 import { ContextSelector } from '../components/Dashboard/ContextSelector';
+import { DashboardButtons } from '../components/Dashboard/DashboardButtons';
 import { RecentlyViewed } from '../components/Dashboard/RecentlyViewed';
 import { SpotlightCard } from '../components/ui/SpotlightCard';
 
@@ -19,6 +20,9 @@ export const DashboardPage = () => {
         
         {/* Personalized "Jump Back In" Strip (or Suggested) */}
         <RecentlyViewed />
+
+        {/* Dynamic Dashboard Buttons */}
+        <DashboardButtons />
 
         {/* Dashboard Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

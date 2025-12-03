@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
+import { useAuth } from '../../contexts/AuthContext';
 import { 
   BookOpen, 
   MessageSquare, 
@@ -9,6 +10,7 @@ import {
   Menu,
   Hexagon
 } from 'lucide-react';
+import * as Icons from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const NavItem = ({ to, icon: Icon, label, collapsed }: { to: string; icon: any; label: string; collapsed: boolean }) => (
@@ -35,6 +37,7 @@ const NavItem = ({ to, icon: Icon, label, collapsed }: { to: string; icon: any; 
 
 export const Sidebar: React.FC = () => {
   const { sidebarOpen, toggleSidebar } = useStore();
+  const { agency } = useAuth();
 
   return (
     <>
@@ -55,15 +58,25 @@ export const Sidebar: React.FC = () => {
         {/* Logo Area */}
         <div className="h-16 flex items-center px-6 border-b border-white/5">
           <div className="flex items-center gap-3 text-white">
-            <div className="relative">
-              <Hexagon className="w-8 h-8 text-centri-500 fill-centri-500/20" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-[10px] font-bold">CW</span>
+            {agency?.branding_config?.logoUrl ? (
+              <img 
+                src={agency.branding_config.logoUrl} 
+                alt="Logo" 
+                className="h-8 w-8 object-contain"
+              />
+            ) : (
+              <div className="relative">
+                <Hexagon className="w-8 h-8 text-centri-500 fill-centri-500/20" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-[10px] font-bold">CW</span>
+                </div>
               </div>
-            </div>
+            )}
             {sidebarOpen && (
               <div className="flex flex-col">
-                <span className="font-bold tracking-tight">CentriWeb</span>
+                <span className="font-bold tracking-tight">
+                  {agency?.branding_config?.companyName || agency?.name || 'CentriWeb'}
+                </span>
                 <span className="text-[10px] text-slate-400 uppercase tracking-wider">Support OS</span>
               </div>
             )}

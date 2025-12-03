@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Header } from './components/Layout/Header';
@@ -11,8 +11,9 @@ import { SupportPage } from './pages/SupportPage';
 import { PageTransition } from './components/Layout/PageTransition';
 import { ChatWidget } from './components/Chat/ChatWidget';
 import { useStore } from './store/useStore';
-import { fetchAgencyConfig, hexToRgb } from './services/agency';
-import { Loader2 } from 'lucide-react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { hexToRgb } from './lib/utils';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 const AnimatedRoutes = () => {
@@ -40,7 +41,8 @@ const AnimatedRoutes = () => {
 };
 
 const Layout = () => {
-  const { theme, agencyConfig } = useStore();
+  const { theme } = useStore();
+  const { agency, isLoading, error } = useAuth();
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -48,14 +50,17 @@ const Layout = () => {
     root.classList.add(theme);
   }, [theme]);
 
-  // Inject Dynamic Brand Colors
+  // Inject Dynamic Brand Colors from agency branding_config
   useEffect(() => {
-    if (agencyConfig) {
-      const rgb = hexToRgb(agencyConfig.colors.primary);
+    if (agency?.branding_config) {
+      const primaryColor = agency.branding_config.primaryColor || '#0ea5e9';
+      const rgb = hexToRgb(primaryColor);
       document.documentElement.style.setProperty('--primary-500', rgb);
-      document.title = `${agencyConfig.name} Support OS`;
+      
+      const companyName = agency.branding_config.companyName || agency.name || 'Support OS';
+      document.title = `${companyName} Support OS`;
     }
-  }, [agencyConfig]);
+  }, [agency]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-dark-bg text-slate-900 dark:text-slate-200 flex flex-col font-sans selection:bg-centri-500 selection:text-white overflow-x-hidden transition-colors duration-500">
@@ -81,24 +86,10 @@ const Layout = () => {
   );
 };
 
-const App = () => {
-  const { setAgencyConfig } = useStore();
-  const [loading, setLoading] = useState(true);
+const AppContent = () => {
+  const { isLoading, error } = useAuth();
 
-  useEffect(() => {
-    // 1. Check for GHL Context (location_id) in URL params
-    // GHL Custom Menu Links usually append ?location_id=xxx&session_key=yyy
-    const params = new URLSearchParams(window.location.search);
-    const locationId = params.get('location_id') || undefined;
-
-    // 2. Fetch Config for this specific location/agency
-    fetchAgencyConfig(locationId).then(config => {
-      setAgencyConfig(config);
-      setLoading(false);
-    });
-  }, [setAgencyConfig]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="h-screen w-screen bg-slate-50 dark:bg-dark-bg flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-centri-500" />
@@ -106,9 +97,27 @@ const App = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="h-screen w-screen bg-slate-50 dark:bg-dark-bg flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Authentication Failed</h2>
+          <p className="text-slate-600 dark:text-slate-400">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <Layout />;
+};
+
+const App = () => {
   return (
     <HashRouter>
-      <Layout />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </HashRouter>
   );
 };

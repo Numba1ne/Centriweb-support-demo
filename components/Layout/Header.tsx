@@ -3,6 +3,7 @@ import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, LayoutGroup } from 'framer-motion';
 import { useStore } from '../../store/useStore';
+import { useAuth } from '../../contexts/AuthContext';
 import { 
   Menu,
   Hexagon,
@@ -40,7 +41,8 @@ const NavTab: React.FC<TabProps> = ({ to, label, isActive }) => (
 );
 
 export const Header: React.FC = () => {
-  const { toggleMobileMenu, setSearchOpen, theme, toggleTheme, agencyConfig } = useStore();
+  const { toggleMobileMenu, setSearchOpen, theme, toggleTheme } = useStore();
+  const { agency } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -62,13 +64,13 @@ export const Header: React.FC = () => {
               
               {/* Dynamic Branding */}
               <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
-                {agencyConfig?.logoUrl ? (
-                   <img src={agencyConfig.logoUrl} alt="Logo" className="h-8 object-contain" />
+                {agency?.branding_config?.logoUrl ? (
+                   <img src={agency.branding_config.logoUrl} alt="Logo" className="h-8 object-contain" />
                 ) : (
                    <Hexagon className="w-6 h-6 text-centri-600 dark:text-centri-500 fill-centri-500/10 transition-transform duration-300 group-hover:rotate-90" />
                 )}
                 <span className="font-bold tracking-tight text-slate-900 dark:text-white text-lg hidden sm:block">
-                  {agencyConfig?.name || 'CentriWeb'}
+                  {agency?.branding_config?.companyName || agency?.name || 'CentriWeb'}
                 </span>
               </div>
 
