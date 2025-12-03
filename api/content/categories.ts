@@ -1,5 +1,5 @@
 /**
- * API Endpoint: Get Content Categories
+* API Endpoint: Get Content Categories
  * 
  * Route: /api/content/categories
  * Method: GET
