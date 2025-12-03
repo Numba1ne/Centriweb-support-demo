@@ -25,8 +25,6 @@ const req = http.get(url, (res) => {
   });
 
   res.on('end', () => {
-    console.log(`📊 HTTP Status: ${res.statusCode} ${res.statusMessage}\n`);
-
     if (res.statusCode !== 200) {
       console.error('❌ Request failed');
       try {
@@ -40,11 +38,16 @@ const req = http.get(url, (res) => {
 
     try {
       const response = JSON.parse(data);
+      
+      // Log 1: HTTP Status Code
+      console.log(`📊 HTTP Status: ${res.statusCode} ${res.statusMessage}\n`);
+      
+      // Log 2: Raw JSON Response Body
       console.log('✅ Response Body:');
       console.log(JSON.stringify(response, null, 2));
       console.log('\n');
 
-      // Decode JWT token
+      // Log 3: Decoded JWT Payload (sub, agency_id, role)
       if (response.supabaseAccessToken) {
         console.log('🔐 Decoded JWT Payload:');
         // Decode without verification (just to see the payload)
@@ -55,22 +58,8 @@ const req = http.get(url, (res) => {
           console.log(JSON.stringify({
             sub: payload.sub,
             agency_id: payload.agency_id,
-            location_id: payload.location_id,
             role: payload.role,
-            app_role: payload.app_role,
-            email: payload.email,
-            name: payload.name,
-            exp: payload.exp,
-            iat: payload.iat,
           }, null, 2));
-          
-          // Show expiration info
-          if (payload.exp) {
-            const expiresAt = new Date(payload.exp * 1000);
-            const now = new Date();
-            const expiresIn = Math.floor((payload.exp * 1000 - now.getTime()) / 1000 / 60);
-            console.log(`\n⏰ Token expires: ${expiresAt.toISOString()} (in ${expiresIn} minutes)`);
-          }
         } else {
           console.log('⚠️  Could not decode JWT payload');
         }
