@@ -1,8 +1,8 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { GUIDE_DATA } from '../../data/guides';
+import type { LibraryGuide } from '../../types/guides';
 
 interface GuideNavigationProps {
   currentAreaId: string;
@@ -10,12 +10,32 @@ interface GuideNavigationProps {
 }
 
 export const GuideNavigation: React.FC<GuideNavigationProps> = ({ currentAreaId, currentGuideId }) => {
-  const area = GUIDE_DATA.find(a => a.id === currentAreaId);
-  if (!area) return null;
+  const [guides, setGuides] = useState<LibraryGuide[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const currentIndex = area.guides.findIndex(g => g.id === currentGuideId);
-  const prevGuide = currentIndex > 0 ? area.guides[currentIndex - 1] : null;
-  const nextGuide = currentIndex < area.guides.length - 1 ? area.guides[currentIndex + 1] : null;
+  useEffect(() => {
+    async function fetchGuides() {
+      try {
+        const res = await fetch(`/api/content/guides?folderSlug=${currentAreaId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setGuides(data);
+        }
+      } catch (err) {
+        console.error('Error fetching guides for navigation:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchGuides();
+  }, [currentAreaId]);
+
+  if (loading || guides.length === 0) return null;
+
+  const currentIndex = guides.findIndex(g => g.id === currentGuideId);
+  const prevGuide = currentIndex > 0 ? guides[currentIndex - 1] : null;
+  const nextGuide = currentIndex < guides.length - 1 ? guides[currentIndex + 1] : null;
 
   if (!prevGuide && !nextGuide) return null;
 

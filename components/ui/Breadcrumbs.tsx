@@ -1,12 +1,61 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight, Home } from 'lucide-react';
-import { GUIDE_DATA } from '../../data/guides';
+
+interface BreadcrumbCache {
+  categories: Map<string, string>; // folder_slug -> folder_label
+  guides: Map<string, { title: string; folder_slug: string }>; // guide_id -> { title, folder_slug }
+}
 
 export const Breadcrumbs: React.FC = () => {
   const location = useLocation();
   const pathnames = location.pathname.split('/').filter((x) => x);
+  const [cache, setCache] = useState<BreadcrumbCache>({
+    categories: new Map(),
+    guides: new Map(),
+  });
+
+  // Fetch categories and guides for breadcrumb lookup
+  useEffect(() => {
+    async function fetchBreadcrumbData() {
+      try {
+        // Fetch categories
+        const categoriesRes = await fetch('/api/content/categories');
+        if (categoriesRes.ok) {
+          const categories = await categoriesRes.json();
+          const categoryMap = new Map<string, string>();
+          categories.forEach((cat: any) => {
+            categoryMap.set(cat.folder_slug, cat.folder_label);
+          });
+          
+          // Fetch guides for each category
+          const guideMap = new Map<string, { title: string; folder_slug: string }>();
+          for (const category of categories) {
+            const guidesRes = await fetch(`/api/content/guides?folderSlug=${category.folder_slug}`);
+            if (guidesRes.ok) {
+              const guides = await guidesRes.json();
+              guides.forEach((guide: any) => {
+                guideMap.set(guide.id, {
+                  title: guide.title,
+                  folder_slug: guide.folder_slug,
+                });
+              });
+            }
+          }
+          
+          setCache({
+            categories: categoryMap,
+            guides: guideMap,
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching breadcrumb data:', err);
+      }
+    }
+    
+    fetchBreadcrumbData();
+  }, []);
 
   if (pathnames.length === 0) return null;
 
@@ -18,13 +67,16 @@ export const Breadcrumbs: React.FC = () => {
 
     // Dynamic mappings (Guides)
     if (pathnames[0] === 'guides') {
-      // Is it an Area ID?
-      const area = GUIDE_DATA.find(a => a.id === value);
-      if (area) return area.title;
+      // Is it an Area ID (folder_slug)?
+      const categoryLabel = cache.categories.get(value);
+      if (categoryLabel) return categoryLabel;
 
       // Is it a Guide ID?
-      const guide = GUIDE_DATA.flatMap(a => a.guides).find(g => g.id === value);
-      if (guide) return guide.title.length > 20 ? guide.title.substring(0, 20) + '...' : guide.title;
+      const guide = cache.guides.get(value);
+      if (guide) {
+        const title = guide.title.length > 20 ? guide.title.substring(0, 20) + '...' : guide.title;
+        return title;
+      }
     }
 
     // Fallback: capitalize

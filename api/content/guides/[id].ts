@@ -1,10 +1,10 @@
 /**
- * API Endpoint: Get Content Categories
+ * API Endpoint: Get Single Guide by ID
  * 
- * Route: /api/content/categories
+ * Route: /api/content/guides/[id]
  * Method: GET
  * 
- * Returns distinct categories (folder_slug, folder_label) from library_guides
+ * Returns a single guide from library_guides by ID
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -18,6 +18,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { id } = req.query;
+
+  if (!id || typeof id !== 'string') {
+    return res.status(400).json({ error: 'Guide ID is required' });
+  }
+
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error('[API] Missing Supabase credentials');
     return res.status(500).json({ error: 'Server configuration error' });
@@ -26,34 +32,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Fetch distinct categories from live guides
     const { data, error } = await supabase
       .from('library_guides')
-      .select('folder_slug, folder_label')
+      .select('*')
+      .eq('id', id)
       .eq('status', 'live')
-      .order('folder_label', { ascending: true });
+      .single();
 
     if (error) {
-      console.error('[API] Error fetching categories:', error);
-      return res.status(500).json({ error: 'Failed to fetch categories' });
+      console.error('[API] Error fetching guide:', error);
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Guide not found' });
+      }
+      return res.status(500).json({ error: 'Failed to fetch guide' });
     }
 
-    // Get distinct categories
-    const categoryMap = new Map<string, { folder_slug: string; folder_label: string }>();
-    data.forEach(guide => {
-      if (!categoryMap.has(guide.folder_slug)) {
-        categoryMap.set(guide.folder_slug, {
-          folder_slug: guide.folder_slug,
-          folder_label: guide.folder_label,
-        });
-      }
-    });
+    if (!data) {
+      return res.status(404).json({ error: 'Guide not found' });
+    }
 
-    const categories = Array.from(categoryMap.values());
-
-    return res.status(200).json(categories);
+    return res.status(200).json(data);
   } catch (error: any) {
-    console.error('[API] Error fetching categories:', error);
+    console.error('[API] Error fetching guide:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
+
