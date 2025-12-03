@@ -33,6 +33,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Extract Authorization header from request to forward to Supabase (for RLS)
     const authHeader = req.headers.authorization || '';
     
+    // Debug: Log auth header
+    console.log('[API/guides/[id]] Auth header present:', !!authHeader);
+    if (!authHeader) {
+      console.warn('[API/guides/[id]] ⚠️ NO AUTH HEADER - Request may fail RLS');
+    }
+    
     // Create client with user's token so RLS policies work
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
@@ -42,9 +48,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
     });
 
+    // Explicitly select all columns including content_json for single guide view
     const { data, error } = await supabase
       .from('library_guides')
-      .select('*')
+      .select('*, content_json')
       .eq('id', id)
       .eq('status', 'live')
       .single();

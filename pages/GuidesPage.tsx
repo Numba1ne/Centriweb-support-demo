@@ -194,9 +194,14 @@ const GuideDetailWrapper = () => {
         
         // Get auth token for API calls
         const token = getCurrentAccessToken();
+        console.log('[GuideDetail] Token available:', !!token);
+        if (!token) {
+          console.warn('[GuideDetail] ⚠️ NO TOKEN FOUND - Request will fail RLS');
+        }
         const headers: HeadersInit = {};
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
+          console.log('[GuideDetail] Sending Token:', token.substring(0, 20) + '...');
         }
         
         // Fetch single guide

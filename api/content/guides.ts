@@ -39,11 +39,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
     });
 
+    // Debug: Log auth header
+    console.log('[API/guides] Auth header present:', !!authHeader);
+    if (!authHeader) {
+      console.warn('[API/guides] ⚠️ NO AUTH HEADER - Request may fail RLS');
+    }
+
     // Select only lightweight columns - exclude content_json and embedding
     let query = supabase
       .from('library_guides')
       .select('id, title, folder_slug, folder_label, subcategory_label, order_index, status, is_global, owner_agency_id')
       .eq('status', 'live')
+      .limit(100) // Force limit to prevent over-fetching
       .order('folder_slug', { ascending: true })
       .order('order_index', { ascending: true });
 

@@ -27,6 +27,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Extract Authorization header from request to forward to Supabase (for RLS)
     const authHeader = req.headers.authorization || '';
     
+    // Debug: Log auth header
+    console.log('[API/categories] Auth header present:', !!authHeader);
+    if (!authHeader) {
+      console.warn('[API/categories] ⚠️ NO AUTH HEADER - Request may fail RLS');
+    }
+    
     // Create client with user's token so RLS policies work
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: {

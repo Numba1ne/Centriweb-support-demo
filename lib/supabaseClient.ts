@@ -59,9 +59,25 @@ export function setSupabaseAccessToken(accessToken: string): void {
 
 /**
  * Get the current access token for API calls
+ * Checks both in-memory and sessionStorage
  * @returns The current access token or null if not authenticated
  */
 export function getCurrentAccessToken(): string | null {
-  return currentAccessToken;
+  // First check in-memory token
+  if (currentAccessToken) {
+    return currentAccessToken;
+  }
+  
+  // Fallback to sessionStorage
+  if (typeof window !== 'undefined') {
+    const storedToken = sessionStorage.getItem('sb_access_token');
+    if (storedToken) {
+      // Restore in-memory token from sessionStorage
+      currentAccessToken = storedToken;
+      return storedToken;
+    }
+  }
+  
+  return null;
 }
 

@@ -40,6 +40,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const data: AuthSessionResponse = await response.json();
 
+      // Save token to sessionStorage for persistence
+      if (data.supabaseAccessToken) {
+        sessionStorage.setItem('sb_access_token', data.supabaseAccessToken);
+        console.log('[AuthContext] Token saved to sessionStorage');
+      }
+
       // Configure Supabase client with the access token
       setSupabaseAccessToken(data.supabaseAccessToken);
 
