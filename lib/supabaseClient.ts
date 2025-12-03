@@ -10,6 +10,8 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.en
 
 // Default client (anonymous access)
 let defaultClient: SupabaseClient | null = null;
+// Store current access token for API calls
+let currentAccessToken: string | null = null;
 
 /**
  * Get or create the default Supabase client (anonymous access)
@@ -51,6 +53,15 @@ export function createAuthenticatedClient(accessToken: string): SupabaseClient {
  * @param accessToken - The JWT token from /api/auth/session
  */
 export function setSupabaseAccessToken(accessToken: string): void {
+  currentAccessToken = accessToken;
   defaultClient = createAuthenticatedClient(accessToken);
+}
+
+/**
+ * Get the current access token for API calls
+ * @returns The current access token or null if not authenticated
+ */
+export function getCurrentAccessToken(): string | null {
+  return currentAccessToken;
 }
 

@@ -11,6 +11,7 @@ import { useStore } from '../store/useStore';
 import { useAuth } from '../contexts/AuthContext';
 import type { LibraryGuide } from '../types/guides';
 import { blocksToMarkdown } from '../lib/contentUtils';
+import { getCurrentAccessToken } from '../lib/supabaseClient';
 
 // Component to render dynamic icon by name
 const IconRenderer = ({ name, className }: { name: string; className?: string }) => {
@@ -52,8 +53,15 @@ const GuidesLibrary = () => {
       try {
         setLoading(true);
         
+        // Get auth token for API calls
+        const token = getCurrentAccessToken();
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         // Fetch categories
-        const categoriesRes = await fetch('/api/content/categories');
+        const categoriesRes = await fetch('/api/content/categories', { headers });
         if (!categoriesRes.ok) throw new Error('Failed to fetch categories');
         const categoriesData = await categoriesRes.json();
         
@@ -68,7 +76,7 @@ const GuidesLibrary = () => {
         // Fetch guides for each category
         const guidesMap = new Map<string, LibraryGuide[]>();
         for (const category of filteredCategories) {
-          const guidesRes = await fetch(`/api/content/guides?folderSlug=${category.folder_slug}`);
+          const guidesRes = await fetch(`/api/content/guides?folderSlug=${category.folder_slug}`, { headers });
           if (guidesRes.ok) {
             const guidesData = await guidesRes.json();
             guidesMap.set(category.folder_slug, guidesData);
@@ -184,15 +192,22 @@ const GuideDetailWrapper = () => {
       try {
         setLoading(true);
         
+        // Get auth token for API calls
+        const token = getCurrentAccessToken();
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         // Fetch single guide
-        const guideRes = await fetch(`/api/content/guides/${guideId}`);
+        const guideRes = await fetch(`/api/content/guides/${guideId}`, { headers });
         if (!guideRes.ok) throw new Error('Guide not found');
         const guideData = await guideRes.json();
         setGuide(guideData);
         
         // Fetch all guides in this category for sidebar
         if (guideData.folder_slug) {
-          const guidesRes = await fetch(`/api/content/guides?folderSlug=${guideData.folder_slug}`);
+          const guidesRes = await fetch(`/api/content/guides?folderSlug=${guideData.folder_slug}`, { headers });
           if (guidesRes.ok) {
             const guidesData = await guidesRes.json();
             setGuides(guidesData);

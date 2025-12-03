@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import type { LibraryGuide } from '../../types/guides';
+import { getCurrentAccessToken } from '../../lib/supabaseClient';
 
 interface GuideNavigationProps {
   currentAreaId: string;
@@ -16,7 +17,14 @@ export const GuideNavigation: React.FC<GuideNavigationProps> = ({ currentAreaId,
   useEffect(() => {
     async function fetchGuides() {
       try {
-        const res = await fetch(`/api/content/guides?folderSlug=${currentAreaId}`);
+        // Get auth token for API calls
+        const token = getCurrentAccessToken();
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const res = await fetch(`/api/content/guides?folderSlug=${currentAreaId}`, { headers });
         if (res.ok) {
           const data = await res.json();
           setGuides(data);

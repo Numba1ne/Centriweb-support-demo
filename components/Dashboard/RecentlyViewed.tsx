@@ -5,6 +5,7 @@ import { Clock, ArrowRight, Sparkles } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { SpotlightCard } from '../ui/SpotlightCard';
 import type { LibraryGuide } from '../../types/guides';
+import { getCurrentAccessToken } from '../../lib/supabaseClient';
 
 interface GuideDisplay {
   id: string;
@@ -23,8 +24,15 @@ export const RecentlyViewed: React.FC = () => {
   useEffect(() => {
     async function fetchAllGuides() {
       try {
+        // Get auth token for API calls
+        const token = getCurrentAccessToken();
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         // Fetch categories
-        const categoriesRes = await fetch('/api/content/categories');
+        const categoriesRes = await fetch('/api/content/categories', { headers });
         if (!categoriesRes.ok) return;
         const categories = await categoriesRes.json();
         
@@ -37,16 +45,14 @@ export const RecentlyViewed: React.FC = () => {
         // Fetch guides for each category
         const guidesMap = new Map<string, GuideDisplay>();
         for (const category of filteredCategories) {
-          const guidesRes = await fetch(`/api/content/guides?folderSlug=${category.folder_slug}`);
+          const guidesRes = await fetch(`/api/content/guides?folderSlug=${category.folder_slug}`, { headers });
           if (guidesRes.ok) {
             const categoryGuides: LibraryGuide[] = await guidesRes.json();
             categoryGuides.forEach(guide => {
               guidesMap.set(guide.id, {
                 id: guide.id,
                 title: guide.title,
-                summary: guide.content_json && Array.isArray(guide.content_json) && guide.content_json.length > 0
-                  ? (guide.content_json[0] as any).content?.substring(0, 150)
-                  : undefined,
+                summary: undefined, // content_json not included in list endpoint
                 areaId: category.folder_slug,
                 areaTitle: category.folder_label,
               });

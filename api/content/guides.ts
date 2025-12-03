@@ -27,11 +27,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Extract Authorization header from request to forward to Supabase (for RLS)
+    const authHeader = req.headers.authorization || '';
+    
+    // Create client with user's token so RLS policies work
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
+    });
 
+    // Select only lightweight columns - exclude content_json and embedding
     let query = supabase
       .from('library_guides')
-      .select('*')
+      .select('id, title, folder_slug, folder_label, subcategory_label, order_index, status, is_global, owner_agency_id')
       .eq('status', 'live')
       .order('folder_slug', { ascending: true })
       .order('order_index', { ascending: true });

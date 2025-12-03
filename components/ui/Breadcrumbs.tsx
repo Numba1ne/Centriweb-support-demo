@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight, Home } from 'lucide-react';
+import { getCurrentAccessToken } from '../../lib/supabaseClient';
 
 interface BreadcrumbCache {
   categories: Map<string, string>; // folder_slug -> folder_label
@@ -20,8 +21,15 @@ export const Breadcrumbs: React.FC = () => {
   useEffect(() => {
     async function fetchBreadcrumbData() {
       try {
+        // Get auth token for API calls
+        const token = getCurrentAccessToken();
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         // Fetch categories
-        const categoriesRes = await fetch('/api/content/categories');
+        const categoriesRes = await fetch('/api/content/categories', { headers });
         if (categoriesRes.ok) {
           const categories = await categoriesRes.json();
           const categoryMap = new Map<string, string>();
@@ -32,7 +40,7 @@ export const Breadcrumbs: React.FC = () => {
           // Fetch guides for each category
           const guideMap = new Map<string, { title: string; folder_slug: string }>();
           for (const category of categories) {
-            const guidesRes = await fetch(`/api/content/guides?folderSlug=${category.folder_slug}`);
+            const guidesRes = await fetch(`/api/content/guides?folderSlug=${category.folder_slug}`, { headers });
             if (guidesRes.ok) {
               const guides = await guidesRes.json();
               guides.forEach((guide: any) => {

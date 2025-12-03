@@ -7,6 +7,7 @@ import Fuse from 'fuse.js';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import type { LibraryGuide } from '../../types/guides';
+import { getCurrentAccessToken } from '../../lib/supabaseClient';
 
 interface SearchGuide {
   id: string;
@@ -30,8 +31,15 @@ export const CommandMenu: React.FC = () => {
       try {
         setLoading(true);
         
+        // Get auth token for API calls
+        const token = getCurrentAccessToken();
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         // Fetch categories first
-        const categoriesRes = await fetch('/api/content/categories');
+        const categoriesRes = await fetch('/api/content/categories', { headers });
         if (!categoriesRes.ok) return;
         const categories = await categoriesRes.json();
         
@@ -44,16 +52,14 @@ export const CommandMenu: React.FC = () => {
         // Fetch guides for each category
         const guides: SearchGuide[] = [];
         for (const category of filteredCategories) {
-          const guidesRes = await fetch(`/api/content/guides?folderSlug=${category.folder_slug}`);
+          const guidesRes = await fetch(`/api/content/guides?folderSlug=${category.folder_slug}`, { headers });
           if (guidesRes.ok) {
             const categoryGuides: LibraryGuide[] = await guidesRes.json();
             categoryGuides.forEach(guide => {
               guides.push({
                 id: guide.id,
                 title: guide.title,
-                summary: guide.content_json && Array.isArray(guide.content_json) && guide.content_json.length > 0
-                  ? (guide.content_json[0] as any).content?.substring(0, 150)
-                  : undefined,
+                summary: undefined, // content_json not included in list endpoint
                 areaName: category.folder_label,
                 areaId: category.folder_slug,
               });
