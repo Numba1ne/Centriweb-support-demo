@@ -1,9 +1,9 @@
 /**
-* API Endpoint: Get Content Categories
- * 
+ * API Endpoint: Get Content Categories
+ *
  * Route: /api/content/categories
  * Method: GET
- * 
+ *
  * Returns distinct categories (folder_slug, folder_label) from library_guides
  */
 
@@ -12,6 +12,8 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+// Use service role key for server-side operations to bypass RLS when needed
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -19,28 +21,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('[API] Missing Supabase credentials');
+    console.error('[API/categories] Missing Supabase credentials');
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
   try {
-    // Extract Authorization header from request to forward to Supabase (for RLS)
+    // Extract Authorization header from request
     const authHeader = req.headers.authorization || '';
-    
-    // Debug: Log auth header
+
+    console.log('[API/categories] Request received');
     console.log('[API/categories] Auth header present:', !!authHeader);
-    if (!authHeader) {
-      console.warn('[API/categories] ⚠️ NO AUTH HEADER - Request may fail RLS');
-    }
-    
-    // Create client with user's token so RLS policies work
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: authHeader,
+
+    // If we have a service role key, use it to bypass RLS for public content
+    const useServiceRole = !!supabaseServiceKey;
+
+    let supabase;
+    if (useServiceRole) {
+      supabase = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
         },
-      },
-    });
+      });
+      console.log('[API/categories] Using service role key (bypassing RLS)');
+    } else {
+      supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: {
+          headers: {
+            Authorization: authHeader,
+          },
+        },
+      });
+      console.log('[API/categories] Using anon key with auth header');
+    }
 
     // Fetch distinct categories from live guides
     const { data, error } = await supabase
@@ -50,13 +63,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .order('folder_label', { ascending: true });
 
     if (error) {
-      console.error('[API] Error fetching categories:', error);
+      console.error('[API/categories] Supabase error:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
       return res.status(500).json({ error: 'Failed to fetch categories' });
     }
 
+    console.log('[API/categories] Query returned', data?.length || 0, 'rows');
+
     // Get distinct categories
     const categoryMap = new Map<string, { folder_slug: string; folder_label: string }>();
-    data.forEach(guide => {
+    (data || []).forEach(guide => {
       if (!categoryMap.has(guide.folder_slug)) {
         categoryMap.set(guide.folder_slug, {
           folder_slug: guide.folder_slug,
@@ -66,10 +86,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const categories = Array.from(categoryMap.values());
+    console.log('[API/categories] Returning', categories.length, 'unique categories');
 
     return res.status(200).json(categories);
   } catch (error: any) {
-    console.error('[API] Error fetching categories:', error);
+    console.error('[API/categories] Unexpected error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
