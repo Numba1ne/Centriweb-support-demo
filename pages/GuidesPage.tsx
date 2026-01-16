@@ -9,9 +9,9 @@ import { cn } from '../lib/utils';
 import { PageTransition } from '../components/Layout/PageTransition';
 import { useStore } from '../store/useStore';
 import { useAuth } from '../contexts/AuthContext';
-import type { LibraryGuide } from '../types/guides';
+import { fetchCategories, fetchGuides, fetchGuideById } from '../services/contentService';
+import type { LibraryGuide, GuideDisplay, GuideCategory } from '../types/guides';
 import { blocksToMarkdown } from '../lib/contentUtils';
-import { getCurrentAccessToken } from '../lib/supabaseClient';
 
 // Component to render dynamic icon by name
 const IconRenderer = ({ name, className }: { name: string; className?: string }) => {
@@ -43,8 +43,8 @@ const CATEGORY_METADATA: Record<string, { iconName: string; description: string 
 const GuidesLibrary = () => {
   const { agencyConfig } = useStore();
   const { agency } = useAuth();
-  const [categories, setCategories] = useState<Array<{ folder_slug: string; folder_label: string }>>([]);
-  const [guidesByCategory, setGuidesByCategory] = useState<Map<string, LibraryGuide[]>>(new Map());
+  const [categories, setCategories] = useState<GuideCategory[]>([]);
+  const [guidesByCategory, setGuidesByCategory] = useState<Map<string, GuideDisplay[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,34 +53,23 @@ const GuidesLibrary = () => {
       try {
         setLoading(true);
         
-        // Get auth token for API calls
-        const token = getCurrentAccessToken();
-        const headers: HeadersInit = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-        
-        // Fetch categories
-        const categoriesRes = await fetch('/api/content/categories', { headers });
-        if (!categoriesRes.ok) throw new Error('Failed to fetch categories');
-        const categoriesData = await categoriesRes.json();
+        // Fetch categories directly from service (uses Supabase client)
+        // This works both locally (client-side) and in production
+        const categoriesData = await fetchCategories();
         
         // Filter by enabled areas if agency config exists
         const enabledAreas = agencyConfig?.enabledGuideAreas;
         const filteredCategories = enabledAreas 
-          ? categoriesData.filter((cat: any) => enabledAreas.includes(cat.folder_slug))
+          ? categoriesData.filter(cat => enabledAreas.includes(cat.folder_slug))
           : categoriesData;
         
         setCategories(filteredCategories);
         
         // Fetch guides for each category
-        const guidesMap = new Map<string, LibraryGuide[]>();
+        const guidesMap = new Map<string, GuideDisplay[]>();
         for (const category of filteredCategories) {
-          const guidesRes = await fetch(`/api/content/guides?folderSlug=${category.folder_slug}`, { headers });
-          if (guidesRes.ok) {
-            const guidesData = await guidesRes.json();
-            guidesMap.set(category.folder_slug, guidesData);
-          }
+          const guidesData = await fetchGuides(category.folder_slug);
+          guidesMap.set(category.folder_slug, guidesData);
         }
         setGuidesByCategory(guidesMap);
         
@@ -180,8 +169,8 @@ const GuidesLibrary = () => {
 const GuideDetailWrapper = () => {
   const { areaId, guideId } = useParams();
   const { agencyConfig } = useStore();
-  const [guide, setGuide] = useState<LibraryGuide | null>(null);
-  const [guides, setGuides] = useState<LibraryGuide[]>([]);
+  const [guide, setGuide] = useState<GuideDisplay | null>(null);
+  const [guides, setGuides] = useState<GuideDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -192,31 +181,19 @@ const GuideDetailWrapper = () => {
       try {
         setLoading(true);
         
-        // Get auth token for API calls
-        const token = getCurrentAccessToken();
-        console.log('[GuideDetail] Token available:', !!token);
-        if (!token) {
-          console.warn('[GuideDetail] ⚠️ NO TOKEN FOUND - Request will fail RLS');
-        }
-        const headers: HeadersInit = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-          console.log('[GuideDetail] Sending Token:', token.substring(0, 20) + '...');
+        // Fetch single guide directly
+        const guideData = await fetchGuideById(guideId);
+        
+        if (!guideData) {
+           throw new Error('Guide not found');
         }
         
-        // Fetch single guide
-        const guideRes = await fetch(`/api/content/guides/${guideId}`, { headers });
-        if (!guideRes.ok) throw new Error('Guide not found');
-        const guideData = await guideRes.json();
         setGuide(guideData);
         
         // Fetch all guides in this category for sidebar
         if (guideData.folder_slug) {
-          const guidesRes = await fetch(`/api/content/guides?folderSlug=${guideData.folder_slug}`, { headers });
-          if (guidesRes.ok) {
-            const guidesData = await guidesRes.json();
-            setGuides(guidesData);
-          }
+          const guidesData = await fetchGuides(guideData.folder_slug);
+          setGuides(guidesData);
         }
         
         setLoading(false);
@@ -251,18 +228,8 @@ const GuideDetailWrapper = () => {
     );
   }
 
-  // Convert guide to format expected by GuideViewer
-  const guideDisplay = {
-    id: guide.id,
-    title: guide.title,
-    summary: guide.content_json && Array.isArray(guide.content_json) && guide.content_json.length > 0
-      ? (guide.content_json[0] as any).content?.substring(0, 150) + '...'
-      : '',
-    tags: [], // Tags not in current schema
-    timeToRead: '5 min', // Not in current schema
-    content: blocksToMarkdown(guide.content_json as any),
-    videoUrl: undefined, // Not in current schema
-  };
+  // Conversion not needed - service returns GuideDisplay
+  const guideDisplay = guide;
 
   return (
     <PageTransition>
