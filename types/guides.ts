@@ -8,14 +8,20 @@ export type GuideStatus = 'live' | 'draft' | 'archived';
 /**
  * Content block structure for content_json
  * Represents a block of content (text, heading, image, etc.)
+ * 
+ * Supports two formats:
+ * 1. Standard format: { type: 'paragraph', content: '...' }
+ * 2. HTML format from Supabase: { type: 'text', content_html: '<h1>...</h1>' }
  */
 export interface ContentBlock {
-  type: 'paragraph' | 'heading' | 'image' | 'list' | 'code' | 'quote';
-  content: string;
+  type: 'paragraph' | 'heading' | 'image' | 'list' | 'code' | 'quote' | 'table' | 'text';
+  content?: string;
+  content_html?: string; // HTML content (from Supabase format)
   level?: number; // For headings (1-6)
   items?: string[]; // For lists
   alt?: string; // For images
   src?: string; // For images
+  // For tables: content should contain markdown table syntax
 }
 
 /**

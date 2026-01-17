@@ -57,13 +57,19 @@ export const GuideViewer: React.FC<{ guide: Guide }> = ({ guide }) => {
             {/* Header Actions */}
             <div className="flex justify-between items-start mb-8">
                 <div className="flex items-center gap-3">
-                    {guide.tags.map(tag => (
-                        <span key={tag} className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest shadow-sm">
-                        {tag}
+                    {guide.tags && guide.tags.length > 0 ? (
+                        guide.tags.map(tag => (
+                            <span key={tag} className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest shadow-sm">
+                            {tag}
+                            </span>
+                        ))
+                    ) : (
+                        <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest shadow-sm">
+                        {guide.folder_label}
                         </span>
-                    ))}
+                    )}
                 </div>
-                <button 
+                <button
                     onClick={() => setZenMode(!zenMode)}
                     className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5"
                     title={zenMode ? "Exit Zen Mode" : "Enter Zen Mode"}
@@ -76,12 +82,14 @@ export const GuideViewer: React.FC<{ guide: Guide }> = ({ guide }) => {
             <p className="text-xl text-slate-500 dark:text-slate-400 leading-relaxed font-light tracking-wide max-w-3xl">{guide.summary}</p>
             
             <div className="flex items-center gap-6 mt-8 text-xs font-mono text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-white/5 pb-8 uppercase tracking-widest">
-              <div className="flex items-center gap-2">
-                <Clock className="w-3 h-3" />
-                <span>{guide.timeToRead} READ</span>
-              </div>
+              {guide.timeToRead && (
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3 h-3" />
+                  <span>{guide.timeToRead} READ</span>
+                </div>
+              )}
               <div className="hidden sm:block">
-                UPDATED: {new Date().toLocaleDateString()}
+                UPDATED: {guide.updated_at ? new Date(guide.updated_at).toLocaleDateString() : new Date().toLocaleDateString()}
               </div>
             </div>
 
@@ -113,6 +121,20 @@ export const GuideViewer: React.FC<{ guide: Guide }> = ({ guide }) => {
                   ul: ({node, ...props}) => <ul className="space-y-3 my-8" {...props} />,
                   li: ({node, ...props}) => <li className="flex items-baseline gap-4 text-slate-600 dark:text-slate-300" {...props}><span className="mt-2.5 w-1 h-1 rounded-full bg-centri-500 flex-shrink-0 opacity-50" /><span>{props.children}</span></li>,
                   blockquote: ({node, ...props}) => <blockquote className="border-l-2 border-centri-500 pl-6 italic text-slate-500 dark:text-slate-400 my-8" {...props} />,
+                  table: ({node, ...props}) => (
+                    <div className="my-8 overflow-x-auto">
+                      <table className="min-w-full border-collapse border border-slate-200 dark:border-white/10 rounded-lg overflow-hidden" {...props} />
+                    </div>
+                  ),
+                  thead: ({node, ...props}) => <thead className="bg-slate-100 dark:bg-slate-800/50" {...props} />,
+                  tbody: ({node, ...props}) => <tbody className="divide-y divide-slate-200 dark:divide-white/5" {...props} />,
+                  tr: ({node, ...props}) => <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors" {...props} />,
+                  th: ({node, ...props}) => (
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-white/10" {...props} />
+                  ),
+                  td: ({node, ...props}) => (
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300/90" {...props} />
+                  ),
                 }}
               >
                 {guide.content}

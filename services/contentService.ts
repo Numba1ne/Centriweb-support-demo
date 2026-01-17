@@ -9,26 +9,90 @@ import type { LibraryGuide, GuideCategory, GuideDisplay, ContentBlock } from '..
 /**
  * Convert content_json blocks to markdown string
  */
-function blocksToMarkdown(blocks: ContentBlock[]): string {
-  if (!blocks || blocks.length === 0) return '';
+function blocksToMarkdown(blocks: ContentBlock[] | null | undefined): string {
+  // Validate that blocks is an array
+  if (!blocks || !Array.isArray(blocks) || blocks.length === 0) {
+    return '';
+  }
   
   return blocks.map(block => {
+    // Handle HTML format from Supabase (type: 'text' with content_html)
+    if (block.type === 'text' && block.content_html) {
+      // Convert HTML to markdown-like format for ReactMarkdown
+      // Simple HTML to markdown conversion
+      let html = block.content_html;
+      
+      // Convert headings
+      html = html.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n');
+      html = html.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n');
+      html = html.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n');
+      html = html.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n');
+      html = html.replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n');
+      html = html.replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n');
+      
+      // Convert paragraphs
+      html = html.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n');
+      
+      // Convert lists
+      html = html.replace(/<ul[^>]*>/gi, '');
+      html = html.replace(/<\/ul>/gi, '\n');
+      html = html.replace(/<ol[^>]*>/gi, '');
+      html = html.replace(/<\/ol>/gi, '\n');
+      html = html.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n');
+      
+      // Convert strong/bold
+      html = html.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+      html = html.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+      
+      // Convert emphasis/italic
+      html = html.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
+      html = html.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+      
+      // Convert links
+      html = html.replace(/<a[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+      
+      // Convert images
+      html = html.replace(/<img[^>]*alt=["']([^"']*)["'][^>]*src=["']([^"']*)["'][^>]*>/gi, '![$1]($2)');
+      html = html.replace(/<img[^>]*src=["']([^"']*)["'][^>]*>/gi, '![]($1)');
+      
+      // Convert line breaks
+      html = html.replace(/<br[^>]*\/?>/gi, '\n');
+      
+      // Remove remaining HTML tags
+      html = html.replace(/<[^>]+>/g, '');
+      
+      // Decode HTML entities
+      html = html
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+      
+      return html.trim();
+    }
+    
+    // Handle standard format
     switch (block.type) {
       case 'heading':
         const level = block.level || 1;
-        return `${'#'.repeat(level)} ${block.content}`;
+        return `${'#'.repeat(level)} ${block.content || ''}`;
       case 'paragraph':
-        return block.content;
+        return block.content || '';
       case 'list':
         return block.items?.map(item => `- ${item}`).join('\n') || '';
       case 'code':
-        return `\`\`\`\n${block.content}\n\`\`\``;
+        return `\`\`\`\n${block.content || ''}\n\`\`\``;
       case 'quote':
-        return `> ${block.content}`;
+        return `> ${block.content || ''}`;
       case 'image':
         return `![${block.alt || ''}](${block.src || ''})`;
+      case 'table':
+        // Tables should be stored as markdown table syntax in content
+        return block.content || '';
       default:
-        return block.content;
+        return block.content || '';
     }
   }).join('\n\n');
 }
@@ -106,14 +170,54 @@ export async function fetchGuides(folderSlug?: string): Promise<GuideDisplay[]> 
   });
 
   // Convert to GuideDisplay format
-  return sorted.map(guide => ({
-    ...guide,
-    content: blocksToMarkdown(guide.content_json as ContentBlock[]),
-    // Extract summary from first paragraph if available
-    summary: guide.content_json && Array.isArray(guide.content_json) && guide.content_json.length > 0
-      ? (guide.content_json[0] as ContentBlock).content.substring(0, 150) + '...'
-      : undefined,
-  }));
+  return sorted.map(guide => {
+    // Handle content_json - it might be an object with guide_blocks key, or a direct array
+    let contentBlocks: ContentBlock[] | null = null;
+    
+    if (guide.content_json) {
+      if (Array.isArray(guide.content_json)) {
+        // Direct array format
+        contentBlocks = guide.content_json as ContentBlock[];
+      } else if (typeof guide.content_json === 'object' && 'guide_blocks' in guide.content_json) {
+        // Object with guide_blocks key
+        const blocks = (guide.content_json as any).guide_blocks;
+        if (Array.isArray(blocks)) {
+          contentBlocks = blocks as ContentBlock[];
+        }
+      } else if (typeof guide.content_json === 'string') {
+        // String format - try to parse
+        try {
+          const parsed = JSON.parse(guide.content_json);
+          if (Array.isArray(parsed)) {
+            contentBlocks = parsed as ContentBlock[];
+          } else if (parsed && typeof parsed === 'object' && 'guide_blocks' in parsed) {
+            contentBlocks = Array.isArray(parsed.guide_blocks) ? parsed.guide_blocks as ContentBlock[] : null;
+          }
+        } catch (e) {
+          console.warn('[ContentService] Failed to parse content_json string:', e);
+        }
+      }
+    }
+    
+    // Extract summary from first block
+    let summary: string | undefined = undefined;
+    if (contentBlocks && contentBlocks.length > 0) {
+      const firstBlock = contentBlocks[0];
+      if (firstBlock.content_html) {
+        // Extract text from HTML for summary
+        const text = firstBlock.content_html.replace(/<[^>]+>/g, '').trim();
+        summary = text.substring(0, 150) + (text.length > 150 ? '...' : '');
+      } else if (firstBlock.content) {
+        summary = firstBlock.content.substring(0, 150) + (firstBlock.content.length > 150 ? '...' : '');
+      }
+    }
+    
+    return {
+      ...guide,
+      content: blocksToMarkdown(contentBlocks),
+      summary,
+    };
+  });
 }
 
 /**
@@ -134,12 +238,51 @@ export async function fetchGuideById(id: string): Promise<GuideDisplay | null> {
     return null;
   }
 
+  // Handle content_json - it might be an object with guide_blocks key, or a direct array
+  let contentBlocks: ContentBlock[] | null = null;
+  
+  if (data.content_json) {
+    if (Array.isArray(data.content_json)) {
+      // Direct array format
+      contentBlocks = data.content_json as ContentBlock[];
+    } else if (typeof data.content_json === 'object' && 'guide_blocks' in data.content_json) {
+      // Object with guide_blocks key
+      const blocks = (data.content_json as any).guide_blocks;
+      if (Array.isArray(blocks)) {
+        contentBlocks = blocks as ContentBlock[];
+      }
+    } else if (typeof data.content_json === 'string') {
+      // String format - try to parse
+      try {
+        const parsed = JSON.parse(data.content_json);
+        if (Array.isArray(parsed)) {
+          contentBlocks = parsed as ContentBlock[];
+        } else if (parsed && typeof parsed === 'object' && 'guide_blocks' in parsed) {
+          contentBlocks = Array.isArray(parsed.guide_blocks) ? parsed.guide_blocks as ContentBlock[] : null;
+        }
+      } catch (e) {
+        console.warn('[ContentService] Failed to parse content_json string:', e);
+      }
+    }
+  }
+
+  // Extract summary from first block
+  let summary: string | undefined = undefined;
+  if (contentBlocks && contentBlocks.length > 0) {
+    const firstBlock = contentBlocks[0];
+    if (firstBlock.content_html) {
+      // Extract text from HTML for summary
+      const text = firstBlock.content_html.replace(/<[^>]+>/g, '').trim();
+      summary = text.substring(0, 150) + (text.length > 150 ? '...' : '');
+    } else if (firstBlock.content) {
+      summary = firstBlock.content.substring(0, 150) + (firstBlock.content.length > 150 ? '...' : '');
+    }
+  }
+
   return {
     ...data,
-    content: blocksToMarkdown(data.content_json as ContentBlock[]),
-    summary: data.content_json && Array.isArray(data.content_json) && data.content_json.length > 0
-      ? (data.content_json[0] as ContentBlock).content.substring(0, 150) + '...'
-      : undefined,
+    content: blocksToMarkdown(contentBlocks),
+    summary,
   };
 }
 
